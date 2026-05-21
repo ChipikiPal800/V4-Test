@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PixelForge — Collaborative Canvas</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  /* =========================================================
+     CSS CUSTOM PROPERTIES — THEME SYSTEM
+  ========================================================= */
+  :root {
+    --bg-deep:        #0a0c14;
+    --bg-mid:         #111420;
+    --bg-surface:     rgba(255,255,255,0.04);
+    --bg-glass:       rgba(255,255,255,0.07);
+    --border-glass:   rgba(255,255,255,0.12);
+    --border-accent:  rgba(110,200,255,0.35);
+    --text-primary:   #e8eaf6;
+    --text-secondary: #7a8299;
+    --text-accent:    #6ec8ff;
+    --accent:         #6ec8ff;
+    --accent-glow:    rgba(110,200,255,0.25);
+    --accent2:        #c77dff;
+    --accent2-glow:   rgba(199,125,255,0.2);
+    --grid-line:      rgba(255,255,255,0.08);
+    --shadow-panel:   0 8px 48px rgba(0,0,0,0.6), 0 2px 16px rgba(0,0,0,0.4);
+    --shadow-glow:    0 0 24px rgba(110,200,255,0.15);
+    --transition:     all 0.25s cubic-bezier(0.4,0,0.2,1);
+    --radius:         14px;
+    --radius-sm:      8px;
+    --font-mono:      'Space Mono', monospace;
+    --font-body:      'DM Mono', monospace;
+  }
+
+  [data-theme="light"] {
+    --bg-deep:        #dce8f5;
+    --bg-mid:         #e8f0fb;
+    --bg-surface:     rgba(255,255,255,0.55);
+    --bg-glass:       rgba(255,255,255,0.70);
+    --border-glass:   rgba(100,140,200,0.25);
+    --border-accent:  rgba(30,100,200,0.35);
+    --text-primary:   #1a1e2e;
+    --text-secondary: #5a6480;
+    --text-accent:    #1a6ac8;
+    --accent:         #1a6ac8;
+    --accent-glow:    rgba(26,106,200,0.18);
+    --accent2:        #7c3aed;
+    --accent2-glow:   rgba(124,58,237,0.15);
+    --grid-line:      rgba(0,0,0,0.10);
+    --shadow-panel:   0 8px 48px rgba(80,120,200,0.18), 0 2px 16px rgba(80,120,200,0.10);
+    --shadow-glow:    0 0 24px rgba(26,106,200,0.10);
+  }
+
+  /* =========================================================
+     GLOBAL RESET & BASE
+  ========================================================= */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; min-height: 100%;
+    background-color: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    transition: background-color 0.4s ease, color 0.4s ease;
+    overflow-x: hidden;
+  }
+
+  /* Layered animated background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(110,200,255,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(199,125,255,0.06) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0,0,0,0.2) 0%, transparent 70%);
+    pointer-events: none;
+    transition: var(--transition);
+  }
+
+  [data-theme="light"] body::before {
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(26,106,200,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(124,58,237,0.06) 0%, transparent 55%);
+  }
+
+  /* =========================================================
+     LAYOUT SHELL
+  ========================================================= */
+  #app {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 24px 16px 40px;
+    gap: 20px;
+  }
+
+  /* =========================================================
+     HEADER
+  ========================================================= */
+  header {
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: var(--shadow-panel);
+    transition: var(--transition);
+  }
+
+  .header-title {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+    color: var(--text-primary);
+  }
+
+  .header-title span {
+    color: var(--text-accent);
+  }
+
+  .header-sub {
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 10px;
+    color: var(--text-secondary);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* =========================================================
+     THEME TOGGLE — CSS-ONLY SUN/MOON ICON
+  ========================================================= */
+  #theme-toggle {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border-glass);
+    background: var(--bg-surface);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    transition: var(--transition);
+    flex-shrink: 0;
+  }
+
+  #theme-toggle:hover {
+    border-color: var(--border-accent);
+    box-shadow: 0 0 14px var(--accent-glow);
+    background: var(--bg-glass);
+  }
+
+  /* The icon container */
+  .theme-icon {
+    width: 18px; height: 18px;
+    position: relative;
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* MOON icon (dark mode default) */
+  .moon-body {
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid var(--text-primary);
+    position: absolute;
+    top: 1px; left: 3px;
+    transition: var(--transition);
+    box-shadow: -3px 1px 0 0 var(--text-primary);
+    clip-path: inset(0 0 0 0);
+  }
+
+  /* SUN rays — hidden by default (dark mode), shown in light mode */
+  .sun-center {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%) scale(0);
+    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .sun-ray {
+    position: absolute;
+    width: 2px; height: 5px;
+    background: var(--text-primary);
+    border-radius: 2px;
+    top: 50%; left: 50%;
+    transform-origin: 50% 160%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  /* 8 rays at 45deg intervals */
+  .sun-ray:nth-child(2)  { transform: translateX(-50%) translateY(-160%) rotate(0deg)   translate(0, -8px); }
+  .sun-ray:nth-child(3)  { transform: translateX(-50%) translateY(-160%) rotate(45deg)  translate(0, -8px); }
+  .sun-ray:nth-child(4)  { transform: translateX(-50%) translateY(-160%) rotate(90deg)  translate(0, -8px); }
+  .sun-ray:nth-child(5)  { transform: translateX(-50%) translateY(-160%) rotate(135deg) translate(0, -8px); }
+  .sun-ray:nth-child(6)  { transform: translateX(-50%) translateY(-160%) rotate(180deg) translate(0, -8px); }
+  .sun-ray:nth-child(7)  { transform: translateX(-50%) translateY(-160%) rotate(225deg) translate(0, -8px); }
+  .sun-ray:nth-child(8)  { transform: translateX(-50%) translateY(-160%) rotate(270deg) translate(0, -8px); }
+  .sun-ray:nth-child(9)  { transform: translateX(-50%) translateY(-160%) rotate(315deg) translate(0, -8px); }
+
+  /* Light mode: show sun, hide moon */
+  [data-theme="light"] .moon-body {
+    box-shadow: none;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  [data-theme="light"] .sun-center {
+    transform: translate(-50%,-50%) scale(1);
+  }
+
+  [data-theme="light"] .sun-ray {
+    opacity: 1;
+  }
+
+  /* Override sun-ray positions to actually show */
+  [data-theme="light"] .sun-ray:nth-child(2)  { transform: translate(-50%, -50%) rotate(0deg)   translateY(-8px); }
+  [data-theme="light"] .sun-ray:nth-child(3)  { transform: translate(-50%, -50%) rotate(45deg)  translateY(-8px); }
+  [data-theme="light"] .sun-ray:nth-child(4)  { transform: translate(-50%, -50%) rotate(90deg)  translateY(-8px); }
+  [data-theme="light"] .sun-ray:nth-child(5)  { transform: translate(-50%, -50%) rotate(135deg) translateY(-8px); }
+  [data-theme="light"] .sun-ray:nth-child(6)  { transform: translate(-50%, -50%) rotate(180deg) translateY(-8px); }
+  [data-theme="light"] .sun-ray:nth-child(7)  { transform: translate(-50%, -50%) rotate(225deg) translateY(-8px); }
+  [data-theme="light"] .sun-ray:nth-child(8)  { transform: translate(-50%, -50%) rotate(270deg) translateY(-8px); }
+  [data-theme="light"] .sun-ray:nth-child(9)  { transform: translate(-50%, -50%) rotate(315deg) translateY(-8px); }
+
+  [data-theme="light"] .theme-icon {
+    transform: rotate(90deg);
+  }
+
+  /* =========================================================
+     MAIN PANEL
+  ========================================================= */
+  .main-panel {
+    width: 100%;
+    max-width: 700px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: var(--shadow-panel), var(--shadow-glow);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    transition: var(--transition);
+  }
+
+  /* Section label */
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+
+  /* =========================================================
+     CANVAS WRAPPER
+  ========================================================= */
+  .canvas-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .canvas-wrapper {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px var(--border-glass),
+      0 4px 32px rgba(0,0,0,0.4),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    cursor: crosshair;
+    transition: box-shadow 0.3s ease;
+  }
+
+  .canvas-wrapper:hover {
+    box-shadow:
+      0 0 0 1px var(--border-accent),
+      0 4px 32px rgba(0,0,0,0.5),
+      0 0 32px var(--accent-glow),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  /* Main drawing canvas */
+  #pixel-canvas {
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  /* Grid overlay canvas (drawn on top) */
+  #grid-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+    image-rendering: pixelated;
+  }
+
+  /* Particle container — sits over canvas */
+  #particle-layer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+
+  /* =========================================================
+     PARTICLE ANIMATION
+  ========================================================= */
+  @keyframes particle-fly {
+    0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--px), var(--py)) scale(0); opacity: 0; }
+  }
+
+  .particle {
+    position: absolute;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: particle-fly 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
+
+  /* =========================================================
+     FRAME COUNTER BADGE
+  ========================================================= */
+  .frame-badge {
+    display: none;
+    position: absolute;
+    top: 8px; right: 8px;
+    background: rgba(0,0,0,0.65);
+    border: 1px solid var(--border-glass);
+    color: var(--text-accent);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 5px;
+    letter-spacing: 0.1em;
+    backdrop-filter: blur(8px);
+    z-index: 10;
+  }
+
+  .frame-badge.visible { display: block; }
+
+  /* =========================================================
+     TOOLBAR ROW
+  ========================================================= */
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* Base button style */
+  .btn {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-glass);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .btn:hover { border-color: var(--border-accent); }
+  .btn:hover::after { opacity: 1; }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn.btn-accent {
+    background: linear-gradient(135deg, rgba(110,200,255,0.18), rgba(110,200,255,0.08));
+    border-color: rgba(110,200,255,0.4);
+    color: var(--text-accent);
+    box-shadow: 0 2px 12px rgba(110,200,255,0.1);
+  }
+
+  .btn.btn-accent:hover {
+    background: linear-gradient(135deg, rgba(110,200,255,0.28), rgba(110,200,255,0.14));
+    box-shadow: 0 2px 20px rgba(110,200,255,0.2);
+  }
+
+  .btn.btn-danger {
+    background: linear-gradient(135deg, rgba(255,80,80,0.15), rgba(255,80,80,0.07));
+    border-color: rgba(255,80,80,0.35);
+    color: #ff6b6b;
+  }
+
+  .btn.btn-danger:hover {
+    background: linear-gradient(135deg, rgba(255,80,80,0.25), rgba(255,80,80,0.12));
+    box-shadow: 0 2px 16px rgba(255,80,80,0.15);
+  }
+
+  .btn.btn-active {
+    background: linear-gradient(135deg, rgba(199,125,255,0.25), rgba(199,125,255,0.12));
+    border-color: rgba(199,125,255,0.5);
+    color: var(--accent2);
+    box-shadow: 0 2px 16px var(--accent2-glow);
+  }
+
+  /* Toggle button active state */
+  .btn.toggle-on {
+    background: linear-gradient(135deg, rgba(199,125,255,0.22), rgba(199,125,255,0.10));
+    border-color: rgba(199,125,255,0.5);
+    color: var(--accent2);
+  }
+
+  /* Divider */
+  .toolbar-divider {
+    width: 1px; height: 28px;
+    background: var(--border-glass);
+    flex-shrink: 0;
+  }
+
+  /* =========================================================
+     COLOR PALETTE
+  ========================================================= */
+  .palette-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .palette-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .color-swatch {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .color-swatch:hover {
+    transform: scale(1.18) translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    z-index: 2;
+  }
+
+  .color-swatch.selected {
+    border-color: var(--text-primary);
+    box-shadow: 0 0 0 3px var(--accent-glow), 0 4px 12px rgba(0,0,0,0.4);
+    transform: scale(1.12) translateY(-1px);
+  }
+
+  /* Divider between palette and custom color */
+  .palette-divider {
+    width: 1px; height: 28px;
+    background: var(--border-glass);
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+  /* Custom color input */
+  #custom-color {
+    width: 36px; height: 28px;
+    border-radius: 6px;
+    border: 2px solid var(--border-glass);
+    background: var(--bg-surface);
+    cursor: pointer;
+    padding: 2px;
+    transition: var(--transition);
+  }
+
+  #custom-color:hover {
+    border-color: var(--border-accent);
+    transform: scale(1.1);
+  }
+
+  /* Active color preview */
+  .active-color-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .active-color-dot {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--border-glass);
+    transition: background-color 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  .active-color-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+
+  /* =========================================================
+     ANIMATION CONTROLS
+  ========================================================= */
+  .anim-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* Progress dots for animation */
+  .anim-dots {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .anim-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border-glass);
+    transition: background 0.15s ease, transform 0.15s ease;
+    border: 1px solid var(--border-glass);
+  }
+
+  .anim-dot.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: scale(1.4);
+    box-shadow: 0 0 6px var(--accent-glow);
+  }
+
+  .anim-dot.filled {
+    background: var(--text-secondary);
+    border-color: var(--text-secondary);
+  }
+
+  /* =========================================================
+     STATUS BAR
+  ========================================================= */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-secondary);
+    letter-spacing: 0.06em;
+    flex-wrap: wrap;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .status-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #3ddc84;
+    box-shadow: 0 0 6px rgba(61,220,132,0.5);
+  }
+
+  .status-dot.warn { background: #ffb74d; box-shadow: 0 0 6px rgba(255,183,77,0.5); }
+
+  .status-saved { color: #3ddc84; font-weight: 700; }
+
+  /* =========================================================
+     NOTIFICATION TOAST
+  ========================================================= */
+  #toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-accent);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 10px 20px;
+    border-radius: 40px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 20px var(--accent-glow);
+    z-index: 9999;
+    pointer-events: none;
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.35s ease;
+    opacity: 0;
+  }
+
+  #toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  /* =========================================================
+     RESPONSIVE
+  ========================================================= */
+  @media (max-width: 540px) {
+    #app { padding: 12px 8px 32px; }
+    .main-panel { padding: 14px; gap: 14px; }
+    .header-title { font-size: 15px; }
+    .color-swatch { width: 24px; height: 24px; }
+    .btn { padding: 6px 10px; font-size: 10px; }
+  }
+
+  /* =========================================================
+     MIRROR MODE INDICATOR
+  ========================================================= */
+  .mirror-line {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 100%;
+    background: rgba(199,125,255,0.4);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 3;
+  }
+
+  .mirror-line.visible { opacity: 1; }
+
+  /* Subtle scanline pattern for the mirror line */
+  .mirror-line::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(199,125,255,0.8) 0px,
+      rgba(199,125,255,0.8) 2px,
+      transparent 2px,
+      transparent 6px
+    );
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===== HEADER ===== -->
+  <header>
+    <div>
+      <div class="header-title">Pixel<span>Forge</span></div>
+      <div class="header-sub">32x32 Canvas Studio</div>
+    </div>
+    <button id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+      <div class="theme-icon">
+        <div class="moon-body"></div>
+        <div class="sun-center"></div>
+        <!-- 8 sun rays -->
+        <div class="sun-ray"></div>
+        <div class="sun-ray"></div>
+        <div class="sun-ray"></div>
+        <div class="sun-ray"></div>
+        <div class="sun-ray"></div>
+        <div class="sun-ray"></div>
+        <div class="sun-ray"></div>
+        <div class="sun-ray"></div>
+      </div>
+    </button>
+  </header>
+
+  <!-- ===== MAIN PANEL ===== -->
+  <div class="main-panel">
+
+    <!-- COLOR PALETTE SECTION -->
+    <div class="palette-section">
+      <div class="section-label">Color Palette</div>
+      <div class="palette-grid" id="palette-grid">
+        <!-- Swatches injected by JS -->
+        <div class="palette-divider"></div>
+        <input type="color" id="custom-color" title="Custom color" value="#ff9900" />
+        <div class="active-color-preview">
+          <div class="active-color-dot" id="active-color-dot"></div>
+          <div class="active-color-label" id="active-color-label">#000000</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CANVAS SECTION -->
+    <div class="canvas-section">
+      <div class="section-label">Canvas</div>
+      <div class="canvas-wrapper" id="canvas-wrapper">
+        <canvas id="pixel-canvas"></canvas>
+        <canvas id="grid-overlay"></canvas>
+        <div class="mirror-line" id="mirror-line"></div>
+        <div id="particle-layer"></div>
+        <div class="frame-badge" id="frame-badge">F 1 / 10</div>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div>
+      <div class="section-label">Tools</div>
+      <div class="toolbar">
+        <button class="btn btn-accent" id="undo-btn" title="Undo (Ctrl+Z)">Undo</button>
+        <button class="btn" id="mirror-btn" title="Toggle mirror mode">Mirror</button>
+        <div class="toolbar-divider"></div>
+        <button class="btn" id="play-btn" title="Play animation">Play</button>
+        <button class="btn" id="stop-btn" title="Stop animation" style="display:none;">Stop</button>
+        <!-- Animation dots -->
+        <div class="anim-dots" id="anim-dots">
+          <!-- 10 dots injected by JS -->
+        </div>
+        <div class="toolbar-divider"></div>
+        <button class="btn btn-danger" id="clear-btn" title="Clear canvas">Clear</button>
+      </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar" id="status-bar">
+      <div class="status-item">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Ready</span>
+      </div>
+      <div class="status-item">
+        <span>Pos: <span id="status-pos">--,--</span></span>
+      </div>
+      <div class="status-item">
+        <span>History: <span id="status-history">0</span>/50</span>
+      </div>
+      <div class="status-item status-saved" id="status-saved" style="margin-left:auto;"></div>
+    </div>
+
+  </div><!-- end .main-panel -->
+
+</div><!-- end #app -->
+
+<!-- Toast notification -->
+<div id="toast"></div>
+
+<script>
+/* =============================================================
+   PIXELFORGE — PIXEL ART CANVAS
+   Single-file vanilla JS implementation
+   Features:
+   - 32x32 grid, 15px cells
+   - 16 retro colors + custom color picker
+   - Click / drag to paint, right-click to erase
+   - Mirror mode (vertical axis)
+   - Undo stack (50 states, Ctrl+Z)
+   - Animation player (10 frames, 2 FPS)
+   - Particle burst effect
+   - Dark/Light theme toggle
+   - localStorage auto-save/load
+   - Clear canvas button
+================================================================ */
+
+(function() {
+  'use strict';
+
+  /* =========================================================
+     CONSTANTS & CONFIG
+  ========================================================= */
+  const GRID_SIZE   = 32;          // 32x32 cells
+  const CELL_SIZE   = 15;          // px per cell
+  const CANVAS_SIZE = GRID_SIZE * CELL_SIZE; // 480px
+  const MAX_HISTORY = 50;          // max undo states
+  const MAX_FRAMES  = 10;          // animation frames
+  const ANIM_FPS    = 2;           // frames per second
+  const STORAGE_KEY = 'pixelforge_canvas_v1';
+
+  /* --- Retro 16-color palette --- */
+  const PALETTE = [
+    '#000000', // black
+    '#ffffff', // white
+    '#ff0000', // red
+    '#00aa00', // green
+    '#0000ff', // blue
+    '#ffff00', // yellow
+    '#00ffff', // cyan
+    '#ff00ff', // magenta
+    '#808080', // gray
+    '#800000', // maroon
+    '#808000', // olive
+    '#000080', // navy
+    '#800080', // purple
+    '#008080', // teal
+    '#c0c0c0', // silver
+    '#00ff00', // lime
+  ];
+
+  /* =========================================================
+     STATE
+  ========================================================= */
+  let pixels       = [];         // flat array of 32*32 color strings ('' = transparent/empty)
+  let history      = [];         // undo stack: array of pixel array snapshots
+  let isDrawing    = false;      // mouse button held down
+  let currentColor = '#000000'; // active paint color
+  let mirrorMode   = false;      // mirror toggle
+  let isPlaying    = false;      // animation playback
+  let animTimer    = null;       // setInterval handle
+  let animFrame    = 0;          // current frame index in playback
+  let lastPaintedCell = -1;      // track last painted cell to avoid re-paint on same cell during drag
+
+  /* =========================================================
+     DOM REFERENCES
+  ========================================================= */
+  const canvasEl        = document.getElementById('pixel-canvas');
+  const gridEl          = document.getElementById('grid-overlay');
+  const paletteGrid     = document.getElementById('palette-grid');
+  const undoBtn         = document.getElementById('undo-btn');
+  const mirrorBtn       = document.getElementById('mirror-btn');
+  const playBtn         = document.getElementById('play-btn');
+  const stopBtn         = document.getElementById('stop-btn');
+  const clearBtn        = document.getElementById('clear-btn');
+  const customColorInput= document.getElementById('custom-color');
+  const activeColorDot  = document.getElementById('active-color-dot');
+  const activeColorLabel= document.getElementById('active-color-label');
+  const statusText      = document.getElementById('status-text');
+  const statusPos       = document.getElementById('status-pos');
+  const statusHistory   = document.getElementById('status-history');
+  const statusSaved     = document.getElementById('status-saved');
+  const statusDot       = document.getElementById('status-dot');
+  const frameBadge      = document.getElementById('frame-badge');
+  const mirrorLine      = document.getElementById('mirror-line');
+  const animDotsEl      = document.getElementById('anim-dots');
+  const themeToggle     = document.getElementById('theme-toggle');
+  const toastEl         = document.getElementById('toast');
+  const particleLayer   = document.getElementById('particle-layer');
+  const canvasWrapper   = document.getElementById('canvas-wrapper');
+
+  /* =========================================================
+     CANVAS SETUP
+  ========================================================= */
+  function setupCanvas() {
+    // Pixel canvas
+    canvasEl.width  = CANVAS_SIZE;
+    canvasEl.height = CANVAS_SIZE;
+    canvasEl.style.width  = CANVAS_SIZE + 'px';
+    canvasEl.style.height = CANVAS_SIZE + 'px';
+
+    // Grid overlay canvas — same size
+    gridEl.width  = CANVAS_SIZE;
+    gridEl.height = CANVAS_SIZE;
+    gridEl.style.width  = CANVAS_SIZE + 'px';
+    gridEl.style.height = CANVAS_SIZE + 'px';
+
+    drawGrid();
+  }
+
+  /* Draw subtle grid lines on the overlay canvas */
+  function drawGrid() {
+    const ctx = gridEl.getContext('2d');
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    // Get theme-appropriate grid color
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.10)';
+    ctx.lineWidth   = 0.5;
+
+    for (let i = 0; i <= GRID_SIZE; i++) {
+      const pos = i * CELL_SIZE;
+      // Vertical
+      ctx.beginPath();
+      ctx.moveTo(pos, 0);
+      ctx.lineTo(pos, CANVAS_SIZE);
+      ctx.stroke();
+      // Horizontal
+      ctx.beginPath();
+      ctx.moveTo(0, pos);
+      ctx.lineTo(CANVAS_SIZE, pos);
+      ctx.stroke();
+    }
+  }
+
+  /* =========================================================
+     PIXEL DATA HELPERS
+  ========================================================= */
+  /* Initialize empty pixel array */
+  function initPixels() {
+    pixels = new Array(GRID_SIZE * GRID_SIZE).fill('');
+  }
+
+  /* Convert row/col to index */
+  function cellIndex(col, row) {
+    return row * GRID_SIZE + col;
+  }
+
+  /* Paint a single pixel cell on the canvas */
+  function paintPixel(col, row, color) {
+    const ctx = canvasEl.getContext('2d');
+    const x = col * CELL_SIZE;
+    const y = row * CELL_SIZE;
+
+    if (!color || color === '') {
+      // Erase: draw transparent (clear)
+      ctx.clearRect(x + 0.5, y + 0.5, CELL_SIZE - 1, CELL_SIZE - 1);
+    } else {
+      ctx.fillStyle = color;
+      ctx.fillRect(x + 0.5, y + 0.5, CELL_SIZE - 1, CELL_SIZE - 1);
+    }
+  }
+
+  /* Redraw entire pixel canvas from pixel array */
+  function redrawAll() {
+    const ctx = canvasEl.getContext('2d');
+    // Redraw background (transparent)
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    // Fill canvas background
+    ctx.fillStyle = document.documentElement.getAttribute('data-theme') === 'light'
+      ? 'rgba(245,248,255,1)'
+      : 'rgba(14,16,26,1)';
+    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    for (let row = 0; row < GRID_SIZE; row++) {
+      for (let col = 0; col < GRID_SIZE; col++) {
+        const color = pixels[cellIndex(col, row)];
+        if (color) {
+          ctx.fillStyle = color;
+          ctx.fillRect(
+            col * CELL_SIZE + 0.5,
+            row * CELL_SIZE + 0.5,
+            CELL_SIZE - 1,
+            CELL_SIZE - 1
+          );
+        }
+      }
+    }
+  }
+
+  /* =========================================================
+     HISTORY / UNDO
+  ========================================================= */
+  /* Push current state onto the history stack */
+  function pushHistory() {
+    history.push(pixels.slice()); // shallow copy of flat array
+    if (history.length > MAX_HISTORY) {
+      history.shift(); // drop oldest
+    }
+    updateStatusHistory();
+    updateAnimDots();
+  }
+
+  /* Undo last action */
+  function undo() {
+    if (history.length === 0) {
+      showToast('Nothing to undo');
+      return;
+    }
+    pixels = history.pop();
+    redrawAll();
+    updateStatusHistory();
+    updateAnimDots();
+    autoSave();
+    showToast('Undone');
+  }
+
+  function updateStatusHistory() {
+    statusHistory.textContent = history.length;
+  }
+
+  /* =========================================================
+     DRAWING INTERACTION
+  ========================================================= */
+  /* Get cell coords from mouse event relative to canvas */
+  function getCellFromEvent(e) {
+    const rect = canvasEl.getBoundingClientRect();
+    const scaleX = canvasEl.width  / rect.width;
+    const scaleY = canvasEl.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top)  * scaleY;
+    const col = Math.floor(x / CELL_SIZE);
+    const row = Math.floor(y / CELL_SIZE);
+    if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return null;
+    return { col, row };
+  }
+
+  /* Apply paint at a cell — handles mirror mode */
+  function applyPaint(col, row, color) {
+    const idx = cellIndex(col, row);
+    if (pixels[idx] === color) return; // no change needed
+
+    pixels[idx] = color;
+    paintPixel(col, row, color);
+
+    /* Mirror mode: mirror across vertical center axis */
+    if (mirrorMode) {
+      const mirrorCol = GRID_SIZE - 1 - col;
+      if (mirrorCol !== col) {
+        const mIdx = cellIndex(mirrorCol, row);
+        pixels[mIdx] = color;
+        paintPixel(mirrorCol, row, color);
+      }
+    }
+  }
+
+  /* =========================================================
+     PARTICLE BURST EFFECT
+  ========================================================= */
+  /* Spawn particles at canvas coordinates (px, py) using a color */
+  function spawnParticles(px, py, color) {
+    const count = 10; // 10 particles per burst (>= 8 as required)
+    const angles = [];
+    // Spread evenly + some randomness
+    for (let i = 0; i < count; i++) {
+      angles.push((360 / count) * i + (Math.random() * 20 - 10));
+    }
+
+    angles.forEach(function(angle) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+
+      const radians = (angle * Math.PI) / 180;
+      const dist = 18 + Math.random() * 28; // distance px
+      const dx = Math.round(Math.cos(radians) * dist);
+      const dy = Math.round(Math.sin(radians) * dist);
+
+      // Use CSS custom properties for animation end position
+      particle.style.setProperty('--px', dx + 'px');
+      particle.style.setProperty('--py', dy + 'px');
+      particle.style.left = px + 'px';
+      particle.style.top  = py + 'px';
+      particle.style.background = color || currentColor;
+      particle.style.marginLeft = '-2px';
+      particle.style.marginTop  = '-2px';
+      particle.style.animationDuration = (0.4 + Math.random() * 0.25) + 's';
+
+      particleLayer.appendChild(particle);
+
+      // Remove after animation completes
+      particle.addEventListener('animationend', function() {
+        particle.remove();
+      });
+    });
+  }
+
+  /* Convert canvas mouse position to particle-layer relative coords */
+  function getParticlePos(e) {
+    const rect = canvasWrapper.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
+  /* =========================================================
+     MOUSE / TOUCH EVENT HANDLERS
+  ========================================================= */
+  let paintColor = '';  // Color being painted in current stroke (set on mousedown)
+
+  canvasEl.addEventListener('mousedown', function(e) {
+    if (isPlaying) return;
+    e.preventDefault();
+    isDrawing = true;
+    lastPaintedCell = -1;
+
+    // Left-click: paint; right-click: erase
+    paintColor = (e.button === 2) ? '' : currentColor;
+
+    pushHistory(); // save state before stroke begins
+
+    const cell = getCellFromEvent(e);
+    if (cell) {
+      applyPaint(cell.col, cell.row, paintColor);
+      lastPaintedCell = cellIndex(cell.col, cell.row);
+
+      // Spawn particles on paint (not erase)
+      if (paintColor) {
+        const pos = getParticlePos(e);
+        spawnParticles(pos.x, pos.y, paintColor);
+      }
+
+      updateStatusPos(cell.col, cell.row);
+      autoSave();
+    }
+  });
+
+  canvasEl.addEventListener('mousemove', function(e) {
+    if (isPlaying) return;
+    const cell = getCellFromEvent(e);
+    if (cell) {
+      updateStatusPos(cell.col, cell.row);
+    }
+
+    if (!isDrawing) return;
+    e.preventDefault();
+
+    if (cell) {
+      const idx = cellIndex(cell.col, cell.row);
+      if (idx === lastPaintedCell) return; // skip already painted cell
+      lastPaintedCell = idx;
+
+      applyPaint(cell.col, cell.row, paintColor);
+
+      // Particles while dragging (throttled)
+      if (paintColor) {
+        const pos = getParticlePos(e);
+        spawnParticles(pos.x, pos.y, paintColor);
+      }
+
+      autoSave();
+    }
+  });
+
+  canvasEl.addEventListener('mouseup', function(e) {
+    isDrawing = false;
+  });
+
+  canvasEl.addEventListener('mouseleave', function(e) {
+    isDrawing = false;
+    statusPos.textContent = '--,--';
+  });
+
+  /* Prevent right-click context menu on canvas */
+  canvasEl.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  });
+
+  /* =========================================================
+     COLOR PALETTE SETUP
+  ========================================================= */
+  function buildPalette() {
+    // Insert swatches before the divider
+    const divider = paletteGrid.querySelector('.palette-divider');
+
+    PALETTE.forEach(function(hex) {
+      const swatch = document.createElement('div');
+      swatch.className = 'color-swatch';
+      swatch.style.backgroundColor = hex;
+      swatch.title = hex;
+      swatch.setAttribute('data-color', hex);
+
+      swatch.addEventListener('click', function() {
+        selectColor(hex);
+      });
+
+      paletteGrid.insertBefore(swatch, divider);
+    });
+
+    // Default selection
+    selectColor(PALETTE[0]);
+  }
+
+  function selectColor(hex) {
+    currentColor = hex;
+
+    // Update swatch selection UI
+    document.querySelectorAll('.color-swatch').forEach(function(s) {
+      s.classList.toggle('selected', s.getAttribute('data-color') === hex);
+    });
+
+    // Update active preview
+    activeColorDot.style.backgroundColor = hex;
+    activeColorLabel.textContent = hex;
+  }
+
+  /* Custom color input handler */
+  customColorInput.addEventListener('input', function() {
+    const hex = customColorInput.value;
+    selectColor(hex);
+
+    // Update or add a dynamic custom swatch
+    let customSwatch = document.querySelector('.color-swatch[data-custom]');
+    if (!customSwatch) {
+      customSwatch = document.createElement('div');
+      customSwatch.className = 'color-swatch';
+      customSwatch.setAttribute('data-custom', 'true');
+      customSwatch.addEventListener('click', function() {
+        selectColor(customSwatch.getAttribute('data-color'));
+      });
+      paletteGrid.insertBefore(customSwatch, paletteGrid.querySelector('.palette-divider'));
+    }
+    customSwatch.style.backgroundColor = hex;
+    customSwatch.setAttribute('data-color', hex);
+    customSwatch.title = hex;
+  });
+
+  /* =========================================================
+     MIRROR MODE
+  ========================================================= */
+  mirrorBtn.addEventListener('click', function() {
+    mirrorMode = !mirrorMode;
+    mirrorBtn.classList.toggle('toggle-on', mirrorMode);
+    mirrorLine.classList.toggle('visible', mirrorMode);
+    showToast(mirrorMode ? 'Mirror mode ON' : 'Mirror mode OFF');
+  });
+
+  /* =========================================================
+     UNDO BUTTON
+  ========================================================= */
+  undoBtn.addEventListener('click', undo);
+
+  /* Ctrl+Z keyboard shortcut */
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      e.preventDefault();
+      undo();
+    }
+  });
+
+  /* =========================================================
+     ANIMATION DOTS UI
+  ========================================================= */
+  function buildAnimDots() {
+    animDotsEl.innerHTML = '';
+    for (let i = 0; i < MAX_FRAMES; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'anim-dot';
+      animDotsEl.appendChild(dot);
+    }
+  }
+
+  function updateAnimDots() {
+    const dots = animDotsEl.querySelectorAll('.anim-dot');
+    const filled = Math.min(history.length, MAX_FRAMES);
+    dots.forEach(function(dot, i) {
+      dot.classList.remove('filled', 'active');
+      if (i < filled) dot.classList.add('filled');
+    });
+  }
+
+  function setActiveDot(frameIdx) {
+    const dots = animDotsEl.querySelectorAll('.anim-dot');
+    dots.forEach(function(dot, i) {
+      dot.classList.toggle('active', i === frameIdx);
+    });
+  }
+
+  /* =========================================================
+     ANIMATION PLAYER
+  ========================================================= */
+  playBtn.addEventListener('click', startAnimation);
+  stopBtn.addEventListener('click', stopAnimation);
+
+  function startAnimation() {
+    if (history.length === 0) {
+      showToast('No history to animate. Draw something first!');
+      return;
+    }
+
+    isPlaying = true;
+    animFrame = 0;
+
+    playBtn.style.display = 'none';
+    stopBtn.style.display = 'inline-flex';
+    frameBadge.classList.add('visible');
+
+    setStatus('Playing animation...');
+
+    const frames = getAnimationFrames();
+    playFrame(frames, 0);
+  }
+
+  /* Get up to MAX_FRAMES snapshots from history */
+  function getAnimationFrames() {
+    const len = Math.min(history.length, MAX_FRAMES);
+    // Take the last `len` history entries
+    return history.slice(history.length - len);
+  }
+
+  /* Recursive frame player */
+  function playFrame(frames, idx) {
+    if (!isPlaying) return;
+
+    const frameData = frames[idx % frames.length];
+    renderFrameData(frameData);
+
+    const displayIdx = (idx % frames.length) + 1;
+    frameBadge.textContent = 'F ' + displayIdx + ' / ' + frames.length;
+    setActiveDot(idx % frames.length);
+
+    animTimer = setTimeout(function() {
+      playFrame(frames, (idx + 1) % frames.length);
+    }, 1000 / ANIM_FPS);
+  }
+
+  function stopAnimation() {
+    isPlaying = false;
+    clearTimeout(animTimer);
+    animTimer = null;
+
+    playBtn.style.display = '';
+    stopBtn.style.display = 'none';
+    frameBadge.classList.remove('visible');
+
+    // Restore current actual state
+    redrawAll();
+    updateAnimDots();
+    setStatus('Ready');
+    showToast('Animation stopped');
+  }
+
+  /* Render a frame snapshot without modifying real pixel state */
+  function renderFrameData(frameData) {
+    const ctx = canvasEl.getContext('2d');
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    // Background
+    ctx.fillStyle = document.documentElement.getAttribute('data-theme') === 'light'
+      ? 'rgba(245,248,255,1)'
+      : 'rgba(14,16,26,1)';
+    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    for (let row = 0; row < GRID_SIZE; row++) {
+      for (let col = 0; col < GRID_SIZE; col++) {
+        const color = frameData[cellIndex(col, row)];
+        if (color) {
+          ctx.fillStyle = color;
+          ctx.fillRect(
+            col * CELL_SIZE + 0.5,
+            row * CELL_SIZE + 0.5,
+            CELL_SIZE - 1,
+            CELL_SIZE - 1
+          );
+        }
+      }
+    }
+  }
+
+  /* =========================================================
+     CLEAR CANVAS
+  ========================================================= */
+  clearBtn.addEventListener('click', function() {
+    if (!confirm('Clear the entire canvas? This cannot be undone.')) return;
+    pushHistory(); // save before clear
+    initPixels();
+    redrawAll();
+    autoSave();
+    showToast('Canvas cleared');
+  });
+
+  /* =========================================================
+     THEME TOGGLE
+  ========================================================= */
+  themeToggle.addEventListener('click', function() {
+    const html = document.documentElement;
+    const isLight = html.getAttribute('data-theme') === 'light';
+    html.setAttribute('data-theme', isLight ? 'dark' : 'light');
+    // Redraw grid with new theme colors
+    drawGrid();
+    redrawAll();
+    localStorage.setItem('pixelforge_theme', isLight ? 'dark' : 'light');
+    showToast(isLight ? 'Dark theme' : 'Light theme');
+  });
+
+  /* =========================================================
+     LOCALSTORAGE SAVE / LOAD
+  ========================================================= */
+  let saveTimeout = null;
+
+  function autoSave() {
+    // Debounce saves to avoid blocking on every pixel
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(function() {
+      try {
+        const data = {
+          pixels:  pixels,
+          version: 1,
+          ts:      Date.now()
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        statusSaved.textContent = 'Saved';
+        setTimeout(function() { statusSaved.textContent = ''; }, 1500);
+      } catch(err) {
+        statusSaved.textContent = 'Save failed';
+        statusDot.classList.add('warn');
+      }
+    }, 300);
+  }
+
+  function loadFromStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      if (data && data.pixels && data.pixels.length === GRID_SIZE * GRID_SIZE) {
+        pixels = data.pixels;
+        return true;
+      }
+    } catch(err) {
+      console.warn('PixelForge: Failed to load saved data.', err);
+    }
+    return false;
+  }
+
+  function loadTheme() {
+    const saved = localStorage.getItem('pixelforge_theme');
+    if (saved) {
+      document.documentElement.setAttribute('data-theme', saved);
+    }
+  }
+
+  /* =========================================================
+     STATUS HELPERS
+  ========================================================= */
+  function updateStatusPos(col, row) {
+    statusPos.textContent = col + ',' + row;
+  }
+
+  function setStatus(msg) {
+    statusText.textContent = msg;
+  }
+
+  /* =========================================================
+     TOAST NOTIFICATION
+  ========================================================= */
+  let toastTimer = null;
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() {
+      toastEl.classList.remove('show');
+    }, 1800);
+  }
+
+  /* =========================================================
+     INITIALIZATION
+  ========================================================= */
+  function init() {
+    // 1. Load saved theme
+    loadTheme();
+
+    // 2. Setup canvases
+    setupCanvas();
+
+    // 3. Initialize pixel array
+    initPixels();
+
+    // 4. Try to load saved canvas
+    const loaded = loadFromStorage();
+
+    // 5. Redraw from data
+    redrawAll();
+
+    // 6. Build palette UI
+    buildPalette();
+
+    // 7. Build animation dots
+    buildAnimDots();
+    updateAnimDots();
+    updateStatusHistory();
+
+    // 8. Toast welcome message
+    if (loaded) {
+      showToast('Canvas loaded from storage');
+    } else {
+      showToast('Welcome to PixelForge');
+    }
+
+    setStatus('Ready');
+  }
+
+  /* Run when DOM is ready */
+  init();
+
+  /* Redraw grid on theme change (MutationObserver for data-theme) */
+  const themeObserver = new MutationObserver(function() {
+    drawGrid();
+    redrawAll();
+  });
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+})();
+</script>
+</body>
+</html>
+```
